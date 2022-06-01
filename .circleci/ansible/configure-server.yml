@@ -14,15 +14,25 @@
 
   pre_tasks:
     - name: "wait 600 seconds for target connection to become reachable/usable."
-      # Your code here
+      command:
+        # It is not necessary to wait because we are using cloudformation deploy command
+        # which ensures that the server is started before moving to the next step in a job
+        sleep 5
 
-    - name: "install python for Ansible."
-      # Your code here
+    # - name: "install python for Ansible."
+    #   # Your code here
 
   # Get the environment variables from CircleCI and add to the EC2 instance
   environment:
-    - TYPEORM_CONNECTION: "{{ lookup('env', 'TYPEORM_CONNECTION')}}"  
+    - ENVIRONMENT: production
+    - TYPEORM_CONNECTION: "{{ lookup('env', 'TYPEORM_CONNECTION')}}" 
+    - TYPEORM_PASSWORD: "{{ lookup('env', 'TYPEORM_PASSWORD')}}"
+    - TYPEORM_HOST: "{{ lookup('env', 'TYPEORM_HOST')}}"
+    - TYPEORM_DATABASE: "{{ lookup('env', 'TYPEORM_DATABASE')}}"
+    - TYPEORM_USERNAME: "{{ lookup('env', 'TYPEORM_USERNAME')}}"
+    - TYPEORM_PORT: "{{ lookup('env', 'TYPEORM_PORT')}}"
+    - TYPEORM_ENTITIES: "{{ lookup('env', 'TYPEORM_ENTITIES')}}"
     # Add more env vars here
 
   roles:
-    # Your code here
+    - configure-server

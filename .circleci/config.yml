@@ -10,6 +10,11 @@ awscli: &awscli
     - image: amazon/aws-cli
   working_directory: ~/project
 
+ansibleimg: &ansibleimg
+  docker:
+    - image: python:3.7-alpine3.11
+  working_directory: ~/project
+
 commands:
   destroy-environment:
     description: Destroy back-end and front-end cloudformation stacks given a workflow ID.
@@ -31,6 +36,21 @@ commands:
             aws s3 rm s3://$BUCKET_NAME --recursive
             aws cloudformation delete-stack --stack-name $BACKEND_STACK
             aws cloudformation delete-stack --stack-name $FRONTEND_STACK
+
+  update_ansible_image:
+    description: install dependencies in python:3.7-alpine3.11 image
+    steps:
+      - run:
+          name: Install dependencies
+          command: |
+            apk update
+            apk add ansible curl
+            pip3 install --upgrade pip
+            pip3 install awscli
+            aws sts get-caller-identity
+            pwd
+            cd .circleci/ansible
+            cat inventory.txt
 
 jobs:
   build-frontend:
@@ -162,7 +182,7 @@ jobs:
             echo BACKEND_IP $BACKEND_IP
 
             echo BACKEND_IP=$BACKEND_IP_ADDRESS >> ~/my_env
-            echo $BACKEND_IP_ADDRESS >> .circleci/ansible/inventory.txtt
+            echo $BACKEND_IP_ADDRESS >> .circleci/ansible/inventory.txt
 
       - persist_to_workspace:
           root: ~/
@@ -170,9 +190,43 @@ jobs:
             - project/.circleci/ansible/inventory.txt
             - my_env
 
-      # Destroy the environment if provi
+      # Destroy the environment if provisioning fails
       - destroy-environment
 
+  configure-infrastructure:
+    <<: *ansibleimg
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints: [ "73:51:04:63:36:94:d9:04:fa:67:e5:cc:3a:46:df:7f" ]
+
+      # attach workspace
+      - attach_workspace:
+          at: ~/
+
+      - update_ansible_image
+      - run:
+          name: Check Directory content
+          command: |
+            pwd
+            ls -al
+            ls -al ~/project
+            ls -al /
+            echo The current user is $(whoami)
+      - run:
+          name: Configure server
+          command: |
+            pwd
+            cd .circleci/ansible
+            sed -i "s/TYPEORM_PASSWORD_STRING/${TYPEORM_PASSWORD}/" roles/configure-server/tasks/main.yml
+            sed -i "s/TYPEORM_USERNAME_STRING/${TYPEORM_USERNAME}/" roles/configure-server/tasks/main.yml
+            sed -i "s/TYPEORM_HOST_STRING/${TYPEORM_HOST}/" roles/configure-server/tasks/main.yml
+            sed -i "s/TYPEORM_DATABASE_STRING/${TYPEORM_DATABASE}/" roles/configure-server/tasks/main.yml
+            ansible-playbook -i inventory.txt configure-server.yml
+            cat roles/configure-server/tasks/main.yml
+
+      # Destory the environment if provisioning fails
+      - destroy-environment
 
 workflows:
   default:
@@ -192,3 +246,5 @@ workflows:
           filters:
             branches:
               only: [develop]
+      - configure-infrastructure:
+          requires: [deploy-infrastructure]
