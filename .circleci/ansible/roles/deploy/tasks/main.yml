@@ -9,7 +9,7 @@
   become: yes
   copy:
     src: artifact.tar.gz
-    dest: /home/ubuntu/backend/artifict.tar.gz
+    dest: /home/ubuntu/backend/artifact.tar.gz
     force: yes
 
 # - name: Copy .env file
@@ -31,4 +31,4 @@
     tar -xvf artifact.tar.gz
     npm install
     pm2 stop default
-    pm2 start npm --no-automation --name "backend" -- start start
+    pm2 start npm --no-automation --name "backend" -- run start

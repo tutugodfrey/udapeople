@@ -298,7 +298,8 @@ jobs:
       - run:
           name: Get backend url
           command: |
-            export API_URL="http://$(grep BACKEND_IP ~/my_env):3030"
+            export $(grep BACKEND_IP ~/my_env)
+            export API_URL="http://$BACKEND_IP:3030"
             echo "${API_URL}"
             echo API_URL="${API_URL}" >> frontend/.env
             cat frontend/.env
@@ -392,12 +393,17 @@ jobs:
     steps:
       - checkout
       - install_packages
+      - attach_workspace:
+          at: ~/
       - run:
           name: Update cloudfront distribution
           command: |
             ls -al
-            export WorkflowID="udapeople-${CIRCLE_WORKFLOW_ID:0:7}
-            ./deploy.sh
+            export WorkflowID="udapeople-${CIRCLE_WORKFLOW_ID:0:7}"
+            aws cloudformation deploy \
+              --template-file .circleci/files/cloudfront.yml \
+              --stack-name InitialStack\
+              --parameter-overrides WorkflowID=${WorkflowID}
 
       # Destory environment on failure
       - destroy-environment
@@ -406,9 +412,13 @@ jobs:
     <<: *awscli
     steps:
       - checkout
+      - install_packages
+      - attach_workspace:
+          at: ~/
       - run:
           name: Get old stack workflow id
           command: |
+            ls -al
             echo OldWorkflowID=$(aws ssm get-parameters --name udapeople-latest-workflow-id --query "Parameters[*].Value" --output text) >> ~/my_env
             echo OldFrontendStack=$(aws ssm get-parameters --name udapeople-latest-frontend-stack --query "Parameters[*].Value" --output text) >> ~/my_env
             echo OldBackendStack=$(aws ssm get-parameters --name udapeople-latest-backend-stack --query "Parameters[*].Value" --output text) >> ~/my_env

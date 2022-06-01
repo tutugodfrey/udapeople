@@ -8,5 +8,5 @@ bash nodesource_setup.sh
 apt install nodejs -y;
 npm install pm2 -g;
 
-# Clone the project repository
-git clone https://github.com/tutugodfrey/udapeople /home/ubuntu/udapeople;
+# # Clone the project repository
+# git clone https://github.com/tutugodfrey/udapeople /home/ubuntu/udapeople;
