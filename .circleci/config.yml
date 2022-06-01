@@ -63,6 +63,25 @@ commands:
             unzip awscliv2.zip
             sudo ./aws/install
 
+  install_nodejs:
+    description: Install NodeJs
+    steps:
+      - run:
+          name: Install nodejs
+          command: |
+            yum install tar gzip -y
+            yum install -y gcc-c++ make curl;
+            curl -sL https://rpm.nodesource.com/setup_15.x | bash -;
+            yum install nodejs -y;
+
+  install_packages:
+    description: Install dependencies
+    steps:
+      - run:
+           name: Install packages
+           command: |
+             yum install tar gzip -y
+
 jobs:
   build-frontend:
     docker:
@@ -154,10 +173,7 @@ jobs:
     <<: *awscli
     steps:
       - checkout
-      - run:
-           name: Install packages
-           command: |
-             yum install tar gzip -y
+      - install_packages
       - run:
           name: Ensure back-end infrastructure exists
           command: |
@@ -271,26 +287,32 @@ jobs:
       # Destory environment if provisioning fails
       - destroy-environment
 
-  # deploy-frontend:
-  #   docker:
-  #     <<: *awscli
-  #   steps:
-  #     # Checkout code from git
-  #     - run:
-  #         name: Install dependencies
-  #         command: |
-  #           # your code here
-  #     - run:
-  #         name: Get backend url
-  #         command: |
-  #           # your code here
-  #           export API_URL="http://${BACKEND_IP}:3030"
-  #           echo "${API_URL}"
-  #     - run:
-  #         name: Deploy frontend objects
-  #         command: |
-  #           # your code here
-  #     # Here's where you will add some code to rollback on failure  
+  deploy-frontend:
+    <<: *awscli
+    steps:
+      - checkout
+      - install_packages
+      - install_nodejs
+      - run:
+          name: Get backend url
+          command: |
+            export API_URL="http://$(grep BACKEND_IP ~/my_env):3030"
+            echo "${API_URL}"
+            echo API_URL="${API_URL}" >> frontend/.env
+            cat frontend/.env
+
+      - run:
+          name: Deploy frontend objects
+          command: |
+            cd frontend
+            npm install
+            npm run build
+            ls -al
+            tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
+            aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
+
+      # Destory Environment on Job failure
+      - destroy-environment  
 
 workflows:
   default:
@@ -314,5 +336,5 @@ workflows:
           requires: [deploy-infrastructure]
       - run-migrations:
           requires: [configure-infrastructure]
-      # - deploy-frontend:
-      #     requires: [run-migrations]
+      - deploy-frontend:
+          requires: [run-migrations]
