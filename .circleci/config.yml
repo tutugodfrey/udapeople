@@ -80,7 +80,7 @@ commands:
       - run:
            name: Install packages
            command: |
-             yum install tar gzip -y
+             yum install tar gzip curl unzip -y
 
 jobs:
   build-frontend:
@@ -314,6 +314,30 @@ jobs:
       # Destory Environment on Job failure
       - destroy-environment  
 
+  deploy-backend:
+    <<: *ansibleimg
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints: [ "73:51:04:63:36:94:d9:04:fa:67:e5:cc:3a:46:df:7f" ]
+      - attach_workspace:
+          at: ~/
+      - update_ansible_image
+      - run:
+          name: Deploy backend
+          command: |
+            ls -al
+            tar -C backend -czvf artifact.tar.gz
+            ls -al
+            cp artifact.tar.gz .circleci/ansible/roles/deploy/files
+            cd .circleci/ansible
+            echo "Contents of the inventory.txt file is ----------"
+            cat inventory.txt
+            ansible-playbook -i inventory.txt deploy-backend.yml
+
+      # Destory environment on job failure
+      - destroy-environment
+
 workflows:
   default:
     jobs:
@@ -337,4 +361,6 @@ workflows:
       - run-migrations:
           requires: [configure-infrastructure]
       - deploy-frontend:
+          requires: [run-migrations]
+      - deploy-backend:
           requires: [run-migrations]
