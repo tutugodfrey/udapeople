@@ -293,6 +293,8 @@ jobs:
       - checkout
       - install_packages
       - install_nodejs
+      - attach_workspace:
+          at: ~/
       - run:
           name: Get backend url
           command: |
@@ -308,10 +310,11 @@ jobs:
             npm install
             npm run build
             ls -al
+            export $(grep FRONTEND_STACK ~/my_env)
             tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
             aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
             OUTPUT_KEY=WebsiteURL
-            WEBSITE_URL=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[*].Outputs[?OutputKey=='$OUTPUT_KEY'].OutputValue" --output text)
+            WEBSITE_URL=$(aws cloudformation describe-stacks --stack-name $FRONTEND_STACK --query "Stacks[*].Outputs[?OutputKey=='$OUTPUT_KEY'].OutputValue" --output text)
             echo WEBSITE_URL=${WEBSITE_URL} >> ~/my_env
 
       - persist_to_workspace:
@@ -338,7 +341,9 @@ jobs:
             ls -al
             tar -C backend -czvf artifact.tar.gz .
             ls -al
-            cp artifact.tar.gz .circleci/ansible/roles/deploy/files
+            mkdir .circleci/ansible/roles/deploy/files/
+            cp artifact.tar.gz .circleci/ansible/roles/deploy/files/
+            ls -al .circleci/ansible/roles/deploy/files/
             cd .circleci/ansible
             echo "Contents of the inventory.txt file is ----------"
             cat inventory.txt
@@ -351,9 +356,9 @@ jobs:
     <<:  *awscli
     steps:
       - checkout
+      - install_packages
       - attach_workspace:
           at: ~/
-      - install_packages
       - run:
           name: Backend smoke test.
           command: |
@@ -381,6 +386,40 @@ jobs:
 
       # Destory environment on failure
       - destroy-environment
+
+  cloudfront-update:
+    <<: *awscli
+    steps:
+      - checkout
+      - install_packages
+      - run:
+          name: Update cloudfront distribution
+          command: |
+            ls -al
+            export WorkflowID="udapeople-${CIRCLE_WORKFLOW_ID:0:7}
+            ./deploy.sh
+
+      # Destory environment on failure
+      - destroy-environment
+
+# cleanup:
+#     docker:
+#       # Docker image here
+#     steps:
+#       # Checkout code from git
+#       - run:
+#           name: Get old stack workflow id
+#           command: |
+#             # your code here
+#             export OldWorkflowID="the id here"
+#             export STACKS=[] #put the list of stacks here
+#       - run:
+#           name: Remove old stacks and files
+#           command: |
+#             if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
+#             then
+#               # your code here
+#             fi
 
 workflows:
   default:
@@ -410,3 +449,5 @@ workflows:
           requires: [run-migrations]
       - smoke-test:
           requires: [deploy-backend, deploy-frontend]
+      - cloudfront-update:
+          requires: [smoke-test]
