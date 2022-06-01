@@ -5,7 +5,7 @@
     path: /home/ubuntu/backend
     state: directory
 
-- name Copy dist directory
+- name: Copy dist directory
   become: yes
   copy:
     src: artifact.tar.gz

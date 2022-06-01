@@ -310,6 +310,14 @@ jobs:
             ls -al
             tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
             aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
+            OUTPUT_KEY=WebsiteURL
+            WEBSITE_URL=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[*].Outputs[?OutputKey=='$OUTPUT_KEY'].OutputValue" --output text)
+            echo WEBSITE_URL=${WEBSITE_URL} >> ~/my_env
+
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - my_env
 
       # Destory Environment on Job failure
       - destroy-environment  
@@ -322,12 +330,13 @@ jobs:
           fingerprints: [ "73:51:04:63:36:94:d9:04:fa:67:e5:cc:3a:46:df:7f" ]
       - attach_workspace:
           at: ~/
+
       - update_ansible_image
       - run:
           name: Deploy backend
           command: |
             ls -al
-            tar -C backend -czvf artifact.tar.gz
+            tar -C backend -czvf artifact.tar.gz .
             ls -al
             cp artifact.tar.gz .circleci/ansible/roles/deploy/files
             cd .circleci/ansible
@@ -336,6 +345,41 @@ jobs:
             ansible-playbook -i inventory.txt deploy-backend.yml
 
       # Destory environment on job failure
+      - destroy-environment
+
+  smoke-test:
+    <<:  *awscli
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/
+      - install_packages
+      - run:
+          name: Backend smoke test.
+          command: |
+            export API_URL="http://$(grep BACKEND_IP ~/my_env):3030" 
+            curl ${API_URL}/api/status | tee test_be.txt
+            grep ok test_be.txt
+            if [[ $? == 0 ]]; then
+              exit 0
+            else
+              exit 1
+            fi
+
+      - run:
+          name: Frontend smoke test.
+          command: |
+            export $(grep WEBSITE_URL ~/my_env)
+            echo $WEBSITE_URL
+            curl ${WEBSITE_URL} | tee test_fe.txt
+            grep Welcome test_fe.txt
+            if [[ $? == 0 ]]; then 
+              exit 0
+            else
+              exit 1
+            fi
+
+      # Destory environment on failure
       - destroy-environment
 
 workflows:
@@ -364,3 +408,5 @@ workflows:
           requires: [run-migrations]
       - deploy-backend:
           requires: [run-migrations]
+      - smoke-test:
+          requires: [deploy-backend, deploy-frontend]
