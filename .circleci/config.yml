@@ -362,8 +362,8 @@ jobs:
       - run:
           name: Backend smoke test.
           command: |
-            export API_URL="http://$(grep BACKEND_IP ~/my_env):3030" 
-            curl ${API_URL}/api/status | tee test_be.txt
+            export $(grep BACKEND_IP ~/my_env)
+            curl "http://$BACKEND_IP:3030/api/status" | tee test_be.txt
             grep ok test_be.txt
             if [[ $? == 0 ]]; then
               exit 0
@@ -402,24 +402,36 @@ jobs:
       # Destory environment on failure
       - destroy-environment
 
-# cleanup:
-#     docker:
-#       # Docker image here
-#     steps:
-#       # Checkout code from git
-#       - run:
-#           name: Get old stack workflow id
-#           command: |
-#             # your code here
-#             export OldWorkflowID="the id here"
-#             export STACKS=[] #put the list of stacks here
-#       - run:
-#           name: Remove old stacks and files
-#           command: |
-#             if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
-#             then
-#               # your code here
-#             fi
+  cleanup:
+    <<: *awscli
+    steps:
+      - checkout
+      - run:
+          name: Get old stack workflow id
+          command: |
+            echo OldWorkflowID=$(aws ssm get-parameters --name udapeople-latest-workflow-id --query "Parameters[*].Value" --output text) >> ~/my_env
+            echo OldFrontendStack=$(aws ssm get-parameters --name udapeople-latest-frontend-stack --query "Parameters[*].Value" --output text) >> ~/my_env
+            echo OldBackendStack=$(aws ssm get-parameters --name udapeople-latest-backend-stack --query "Parameters[*].Value" --output text) >> ~/my_env
+            # Save the latest stack details to aws parameter store
+            export $(grep FRONTEND_STACK ~/my_env)
+            export $(grep BACKEND_STACK ~/my_env)
+            aws ssm put-parameter --name udapeople-latest-workflow-id --value udapeople-${CIRCLE_WORKFLOW_ID:0:7} --type String
+            aws ssm put-parameter --name udapeople-latest-frontend-stack --value ${FRONTEND_STACK} --type String
+            aws ssm put-parameter --name udapeople-latest-backend-stack --value ${BACKEND_STACK} --type String
+
+      - run:
+          name: Remove old stacks and files
+          command: |
+            export $(grep OldWorkflowID ~/my_env)
+            export $(grep OldFrontendStack ~/my_env)
+            export $(grep OldBackendStack ~/my_env)
+
+            OUTPUT_KEY=WebsiteBucketName
+            export OLD_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name $OldFrontendStack --query "Stacks[*].Outputs[?OutputKey=='$OUTPUT_KEY'].OutputValue" --output text)
+            echo Bucket Name Is $OLD_BUCKET_NAME
+            aws s3 rm s3://$OLD_BUCKET_NAME --recursive
+            aws cloudformation delete-stack --stack-name $OldBackendStack
+            aws cloudformation delete-stack --stack-name $OldFrontendStack
 
 workflows:
   default:
@@ -451,3 +463,5 @@ workflows:
           requires: [deploy-backend, deploy-frontend]
       - cloudfront-update:
           requires: [smoke-test]
+      - cleanup:
+          requires: [cloudfront-update]
