@@ -37,6 +37,24 @@ commands:
             aws s3 rm s3://$BUCKET_NAME --recursive
             aws cloudformation delete-stack --stack-name $BACKEND_STACK
             aws cloudformation delete-stack --stack-name $FRONTEND_STACK
+  
+  revert-migrations:
+    description: Revert the last migration
+    # parameters:
+    #   workflow_id:
+    #     type: string
+    steps:
+      - run:
+           name: Revert migrations
+           when: on_fail
+           command: |
+             SUCCESS=$(aws ssm get-parameters --name migration-status --query "Parameters[*].Value" --output text)
+             echo $SUCCESS
+             if (( $SUCCESS == 1 ));  then
+               cd ~/project/backend
+               npm install
+               npm run migration:revert
+             fi
 
   update_ansible_image:
     description: install dependencies in python:3.7-alpine3.11 image
@@ -80,7 +98,7 @@ commands:
       - run:
            name: Install packages
            command: |
-             yum install tar gzip curl unzip -y
+             yum install tar gzip curl unzip less -y
 
 jobs:
   build-frontend:
@@ -261,8 +279,8 @@ jobs:
       - checkout
       - attach_workspace:
           at: ~/
-
       - install_aws_cli
+      - run: sudo apt-get install less -y
       - run:
           name: Run migrations
           command: |
@@ -274,13 +292,19 @@ jobs:
 
       - run:
           # name: Send migration results to memstash
-          name: Send migration results to memstash
+          name: Send migration results to aws parameter store
           command: |
             pwd
             ls -al
+            aws sts get-caller-identity
+
             if grep -q "has been executed successfully." ~/project/backend/migrations_dump.txt
             then
-              aws ssm put-parameter --name migration_${CIRCLE_WORKFLOW_ID:0:7} --value 1 --type String
+              echo Migration succeeds
+              aws ssm put-parameter --name migration-status --value 1 --overwrite --type String
+            else
+              echo Migration fails
+              aws ssm put-parameter --name migration-status --value 0 --overwrite --type String
             fi
             cat ~/project/backend/migrations_dump.txt
 
@@ -324,7 +348,8 @@ jobs:
             - my_env
 
       # Destory Environment on Job failure
-      - destroy-environment  
+      - destroy-environment
+      - revert-migrations
 
   deploy-backend:
     <<: *ansibleimg
@@ -352,6 +377,7 @@ jobs:
 
       # Destory environment on job failure
       - destroy-environment
+      - revert-migrations
 
   smoke-test:
     <<:  *awscli
@@ -387,6 +413,7 @@ jobs:
 
       # Destory environment on failure
       - destroy-environment
+      - revert-migrations
 
   cloudfront-update:
     <<: *awscli
@@ -407,6 +434,7 @@ jobs:
 
       # Destory environment on failure
       - destroy-environment
+      - revert-migrations
 
   cleanup:
     <<: *awscli
@@ -418,6 +446,7 @@ jobs:
       - run:
           name: Get old stack workflow id
           command: |
+            export TERM=xterm
             ls -al
             echo OldWorkflowID=$(aws ssm get-parameters --name udapeople-latest-workflow-id --query "Parameters[*].Value" --output text) >> ~/my_env
             echo OldFrontendStack=$(aws ssm get-parameters --name udapeople-latest-frontend-stack --query "Parameters[*].Value" --output text) >> ~/my_env
@@ -425,13 +454,14 @@ jobs:
             # Save the latest stack details to aws parameter store
             export $(grep FRONTEND_STACK ~/my_env)
             export $(grep BACKEND_STACK ~/my_env)
-            aws ssm put-parameter --name udapeople-latest-workflow-id --value udapeople-${CIRCLE_WORKFLOW_ID:0:7} --type String
-            aws ssm put-parameter --name udapeople-latest-frontend-stack --value ${FRONTEND_STACK} --type String
-            aws ssm put-parameter --name udapeople-latest-backend-stack --value ${BACKEND_STACK} --type String
+            aws ssm put-parameter --name udapeople-latest-workflow-id --value ${CIRCLE_WORKFLOW_ID:0:7} --overwrite --type String --output text
+            aws ssm put-parameter --name udapeople-latest-frontend-stack --value ${FRONTEND_STACK} --overwrite --type String --output text
+            aws ssm put-parameter --name udapeople-latest-backend-stack --value ${BACKEND_STACK} --overwrite --type String --output text
 
       - run:
           name: Remove old stacks and files
           command: |
+            export TERM=xterm
             export $(grep OldWorkflowID ~/my_env)
             export $(grep OldFrontendStack ~/my_env)
             export $(grep OldBackendStack ~/my_env)
@@ -439,6 +469,7 @@ jobs:
             OUTPUT_KEY=WebsiteBucketName
             export OLD_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name $OldFrontendStack --query "Stacks[*].Outputs[?OutputKey=='$OUTPUT_KEY'].OutputValue" --output text)
             echo Bucket Name Is $OLD_BUCKET_NAME
+            echo Old Frontend Stack $OldFrontendStack
             aws s3 rm s3://$OLD_BUCKET_NAME --recursive
             aws cloudformation delete-stack --stack-name $OldBackendStack
             aws cloudformation delete-stack --stack-name $OldFrontendStack
