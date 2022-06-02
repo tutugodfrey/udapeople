@@ -474,6 +474,23 @@ jobs:
             aws cloudformation delete-stack --stack-name $OldBackendStack
             aws cloudformation delete-stack --stack-name $OldFrontendStack
 
+  # node-exporter:
+  #   <<: *ansibleimg
+  #   steps:
+  #     - checkout
+  #     - add_ssh_keys:
+  #         fingerprints: [ "73:51:04:63:36:94:d9:04:fa:67:e5:cc:3a:46:df:7f" ]
+  #     - attach_workspace:
+  #         at: ~/
+
+  #     - update_ansible_image
+  #     - run:
+  #         name: Install node exporter on server
+  #         command: |
+  #           cp prometheus/node-exporter.sh .circleci/ansible/roles/configure-prometheus-node-exporter/files/
+  #           cd .circleci/ansible
+  #           ansible-playbook -i inventory.txt       
+
 workflows:
   default:
     jobs:
@@ -506,3 +523,5 @@ workflows:
           requires: [smoke-test]
       - cleanup:
           requires: [cloudfront-update]
+      # - node-exporter:
+      #     requires: [deploy-backend]

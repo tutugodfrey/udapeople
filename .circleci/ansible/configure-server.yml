@@ -36,4 +36,5 @@
     # Add more env vars here
 
   roles:
-    - configure-server
+    - role/configure-server
+    - role/configure-prometheus-node-exporter
