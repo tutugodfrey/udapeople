@@ -185,6 +185,7 @@ jobs:
           name: Scan Backend
           command: |
             cd backend
+            npm install
             npm audit fix --audit-level=critical --force
 
   deploy-infrastructure:
@@ -348,8 +349,8 @@ jobs:
             - my_env
 
       # Destory Environment on Job failure
-      - destroy-environment
       - revert-migrations
+      - destroy-environment
 
   deploy-backend:
     <<: *ansibleimg
@@ -376,8 +377,8 @@ jobs:
             ansible-playbook -i inventory.txt deploy-backend.yml
 
       # Destory environment on job failure
-      - destroy-environment
       - revert-migrations
+      - destroy-environment
 
   smoke-test:
     <<:  *awscli
@@ -412,8 +413,8 @@ jobs:
             fi
 
       # Destory environment on failure
-      - destroy-environment
       - revert-migrations
+      - destroy-environment
 
   cloudfront-update:
     <<: *awscli
@@ -433,8 +434,9 @@ jobs:
               --parameter-overrides WorkflowID=${WorkflowID}
 
       # Destory environment on failure
-      - destroy-environment
       - revert-migrations
+      - destroy-environment
+
 
   cleanup:
     <<: *awscli
