@@ -342,7 +342,6 @@ jobs:
             OUTPUT_KEY=WebsiteURL
             WEBSITE_URL=$(aws cloudformation describe-stacks --stack-name $FRONTEND_STACK --query "Stacks[*].Outputs[?OutputKey=='$OUTPUT_KEY'].OutputValue" --output text)
             echo WEBSITE_URL=${WEBSITE_URL} >> ~/my_env
-            exit 1
 
       - persist_to_workspace:
           root: ~/
@@ -511,7 +510,7 @@ workflows:
           requires: [test-frontend, test-backend, scan-frontend, scan-backend]
           filters:
             branches:
-              only: [develop]
+              only: [master]
       - configure-infrastructure:
           requires: [deploy-infrastructure]
       - run-migrations:
