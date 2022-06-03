@@ -32,3 +32,7 @@ Outputs:
   WebsiteURL:
     Value: !GetAtt WebsiteBucket.WebsiteURL
     Description: URL for website hosted on S3
+
+  WebsiteBucketName:
+    Description: Outut the bucket name
+    Value: !Ref WebsiteBucket

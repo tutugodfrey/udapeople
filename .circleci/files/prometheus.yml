@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Setup promethus servers
+Parameters:
+  ProjectName:
+    Description: Project stack is been applied to.
+    Type: String
+    Default: udapeople
+  KeyName:
+    Description: Key-pair to log into the instance
+    Type: String
+    Default: uda-devops-us-east1
+  # ImageID:
+  #   Description: AMI ID for the instance (Amazon Linux 2 AMI)
+  #   Type: String
+  #   Default: ami-03368e982f317ae48 # N.Virgina Amazon Linux 2
+  InstanceType:
+    Description: Machine capacity
+    Type: String
+    Default: t2.micro
+
+Mappings:
+  Region2AMI:
+    us-east-1:
+      AMI: ami-068663a3c619dd892 # Ubuntu Image
+Resources:
+  PrometheusSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub ${ProjectName}-Prometheus-server SG
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 9090
+          ToPort: 9090
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 9100
+          ToPort: 9100
+          CidrIp: 0.0.0.0/0 # To be changed to VPC Cidr
+        - IpProtocol: tcp
+          FromPort: 9093
+          ToPort: 9093
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  PrometheusInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap [ Region2AMI, !Ref AWS::Region, AMI ]
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      SecurityGroups:
+        - Ref: PrometheusSG
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-Prometheus-server
+      UserData:
+        Fn::Base64: !Sub |
+          #! /bin/bash
+
+          apt-get update -y
+          apt-get install git -y
+          git clone --branch develop https://github.com/tutugodfrey/udapeople
+          cd udapeople
+          ./prometheus/prometheus.sh
+          ./prometheus/prometheus.sh
+
+Outputs:
+  InstanceID:
+    Description: IP address of the Instance
+    Value: !Ref PrometheusInstance
+  
+  InstancePublicIP:
+    Description: IP address of the Instance
+    Value: !GetAtt PrometheusInstance.PublicIp
+
+  InstancePrivateDns:
+    Description: Prometheus server DNS
+    Value: !GetAtt PrometheusInstance.PrivateDnsName
+
+  InstancePublicDns:
+    Description: Prometheus server DNS
+    Value: !GetAtt PrometheusInstance.PublicDnsName
