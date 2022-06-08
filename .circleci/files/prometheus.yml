@@ -23,6 +23,38 @@ Mappings:
     us-east-1:
       AMI: ami-068663a3c619dd892 # Ubuntu Image
 Resources:
+  PromIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+  
+  PromAccessPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub ${ProjectName}-prom-iam-policy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: "secretsmanager:*"
+            Resource: !Sub "arn:aws:secretsmanager:us-east-1:${AWS::AccountId}:secret:aws-access-key-O2heRR"
+      Roles:
+      - !Ref PromIamRole
+
+  PromInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref PromIamRole
+
   PrometheusSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -62,10 +94,23 @@ Resources:
 
           apt-get update -y
           apt-get install git -y
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          ./aws/install
           git clone --branch develop https://github.com/tutugodfrey/udapeople
-          cd udapeople
-          ./prometheus/prometheus.sh
-          ./prometheus/prometheus.sh
+          cd udapeople/prometheus
+          AWS_DEFAULT_REGION=$(!Ref AWS::Region)
+          echo Region is ====== $AWS_DEFAULT_REGIONN
+          echo Checking for REGION----------------
+          if [ -z $AWS_DEFAULT_REGION ]; then
+            export AWS_DEFAULT_REGION=us-east-1
+          fi
+          ACCESS_KEY_ID=$(aws secretsmanager get-secret-value --secret-id aws-access-key | jq --raw-output '.SecretString' | jq '.' | jq -r "to_entries|map(\"\(.key)=\(.value|tostring)\")|.[]" | grep -w "\<access-key-id\>" | awk -F'=' '{ print $2 }')
+          SECRET_ACCESS_KEY=$(aws secretsmanager get-secret-value --secret-id aws-access-key | jq --raw-output '.SecretString' | jq '.' | jq -r "to_entries|map(\"\(.key)=\(.value|tostring)\")|.[]" | grep -w "\<secret-access-key\>" | awk -F'=' '{ print $2 }')
+          sed -i "s/AWS_REGION/$AWS_DEFAULT_REGION/" prometheus.yml
+          sed -i "s/ACCESS_KEY_ID/$ACCESS_KEY_ID/" prometheus.yml
+          sed -i "s/SECRET_ACCESS_KEY/$SECRET_ACCESS_KEY/" prometheus.yml
+          ./prometheus.sh
 
 Outputs:
   InstanceID:
