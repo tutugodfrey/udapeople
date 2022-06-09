@@ -83,6 +83,7 @@ Resources:
       ImageId: !FindInMap [ Region2AMI, !Ref AWS::Region, AMI ]
       InstanceType: !Ref InstanceType
       KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref PromInstanceProfile
       SecurityGroups:
         - Ref: PrometheusSG
       Tags:
@@ -93,7 +94,7 @@ Resources:
           #! /bin/bash
 
           apt-get update -y
-          apt-get install git -y
+          apt-get install git unzip jq -y
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip awscliv2.zip
           ./aws/install
@@ -107,9 +108,16 @@ Resources:
           fi
           ACCESS_KEY_ID=$(aws secretsmanager get-secret-value --secret-id aws-access-key | jq --raw-output '.SecretString' | jq '.' | jq -r "to_entries|map(\"\(.key)=\(.value|tostring)\")|.[]" | grep -w "\<access-key-id\>" | awk -F'=' '{ print $2 }')
           SECRET_ACCESS_KEY=$(aws secretsmanager get-secret-value --secret-id aws-access-key | jq --raw-output '.SecretString' | jq '.' | jq -r "to_entries|map(\"\(.key)=\(.value|tostring)\")|.[]" | grep -w "\<secret-access-key\>" | awk -F'=' '{ print $2 }')
+          ALERT_EMAIL_PASSWORD=$(aws secretsmanager get-secret-value --secret-id aws-access-key | jq --raw-output '.SecretString' | jq '.' | jq -r "to_entries|map(\"\(.key)=\(.value|tostring)\")|.[]" | grep -w "\<email-password\>" | awk -F'=' '{ print $2 }')
+          ALERT_SENDER_EMAIL=$(aws ssm get-parameters --name alert-sender-email --with-decryption --output text --query "Parameters[*].Value")
+          ALERT_RECEIVER_EMAIL=$(aws ssm get-parameters --name alert-receiver-email --with-decryption --output text --query "Parameters[*].Value")
           sed -i "s/AWS_REGION/$AWS_DEFAULT_REGION/" prometheus.yml
           sed -i "s/ACCESS_KEY_ID/$ACCESS_KEY_ID/" prometheus.yml
-          sed -i "s/SECRET_ACCESS_KEY/$SECRET_ACCESS_KEY/" prometheus.yml
+          echo SECRET_ACCESS_KEY $SECRET_ACCESS_KEY 
+          sed -i "s|SECRET_ACCESS_KEY|$SECRET_ACCESS_KEY|" prometheus.yml
+          sed -i "s|ALERT_EMAIL_PASSWORD|$ALERT_EMAIL_PASSWORD|" alertmanager.yml
+          sed -i "s|ALERT_RECEIVER_EMAIL|$ALERT_RECEIVER_EMAIL|" alertmanager.yml
+          sed -i "s|ALERT_SENDER_EMAIL|$ALERT_SENDER_EMAIL|" alertmanager.yml
           ./prometheus.sh
 
 Outputs:
