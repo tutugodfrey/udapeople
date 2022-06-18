@@ -5,7 +5,7 @@ wget https://github.com/prometheus/node_exporter/releases/download/v1.0.1/node_e
 tar xzf node_exporter-1.0.1.linux-amd64.tar.gz
 cp node_exporter-1.0.1.linux-amd64/node_exporter /usr/local/bin/node_exporter
 
-cat >> /etc/systemd/system/node-exporter.service <<EOF
+cat >> /etc/systemd/system/node_exporter.service <<EOF
 [Unit]
 Description=Prometheus Node Exporter Service
 After=network.target

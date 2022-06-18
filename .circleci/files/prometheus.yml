@@ -45,6 +45,9 @@ Resources:
           - Effect: Allow
             Action: "secretsmanager:*"
             Resource: !Sub "arn:aws:secretsmanager:us-east-1:${AWS::AccountId}:secret:aws-access-key-O2heRR"
+          - Effect: Allow
+            Action: "ssm:GetParameters"
+            Resource: ["arn:aws:ssm:*:*:parameter/alert*"]
       Roles:
       - !Ref PromIamRole
 
