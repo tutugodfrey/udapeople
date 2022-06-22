@@ -131,6 +131,7 @@ jobs:
              # Your code here
              cd backend
              npm install
+             npm i prom-client
              npm run build
       - save_cache:
           paths: [backend/node_modules]

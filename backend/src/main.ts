@@ -45,6 +45,15 @@ async function bootstrap() {
       }
     },
   };
+
+
+
+
+  // app.get('/metrics', (req, res) => {
+  //   res.set('Content-type', Prometheus.register.contentType);
+  //   res.end(Prometheus.register.metrics());
+  // });
+
   app.use(cors(corsOptions));
   app.useGlobalFilters(new ErrorFilter());
   await app.listen(config.PORT);
