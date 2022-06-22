@@ -6,4 +6,4 @@ fi
 
 aws cloudformation deploy \
   --template-file .circleci/files/prometheus.yml \
-  --stack-name udapeople-Prometheus
+  --stack-name udapeople-prometheus --capabilities CAPABILITY_IAM

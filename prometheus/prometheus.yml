@@ -10,7 +10,7 @@ alerting:
   alertmanagers:
   - static_configs:
     - targets:
-      - localhost:9093
+      - 'localhost:9093'
 
 scrape_configs:
   - job_name: 'prometheus'
@@ -23,7 +23,7 @@ scrape_configs:
   
   - job_name: "node"
     ec2_sd_configs:
-       - region: us-east-1
+       - region: AWS_REGION
          access_key: ACCESS_KEY_ID
          secret_key: SECRET_ACCESS_KEY
          port: 9100
