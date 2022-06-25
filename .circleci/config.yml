@@ -131,6 +131,7 @@ jobs:
              # Your code here
              cd backend
              npm install
+             npm i prom-client
              npm run build
       - save_cache:
           paths: [backend/node_modules]
@@ -427,7 +428,7 @@ jobs:
           name: Update cloudfront distribution
           command: |
             ls -al
-            export WorkflowID="udapeople-${CIRCLE_WORKFLOW_ID:0:7}"
+            export WorkflowID="${CIRCLE_WORKFLOW_ID:0:7}"
             aws cloudformation deploy \
               --template-file .circleci/files/cloudfront.yml \
               --stack-name InitialStack\

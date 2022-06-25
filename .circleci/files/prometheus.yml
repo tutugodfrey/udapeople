@@ -76,8 +76,16 @@ Resources:
           ToPort: 9093
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
+          FromPort: 9115
+          ToPort: 9115
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
           CidrIp: 0.0.0.0/0
 
   PrometheusInstance:
