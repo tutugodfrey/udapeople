@@ -36,7 +36,7 @@ import { UpdateEmployeeEffectiveDate } from './commands/update-employee-effectiv
 import { UpdateEmployeeBirthdate } from './commands/update-employee-birthdate.command';
 import { ActivateEmployee } from './commands/activate-employee.command';
 
-@Controller('/Employees')
+@Controller('/api/employees')
 export class EmployeeController {
   constructor(
     private readonly commandDispatcher: SyncCommandDispatcher,
