@@ -11,7 +11,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { Usr } from '../../auth/user.decorator';
 import { User } from '../../auth/user.interface';
 
-@Controller('/orders')
+@Controller('/api/orders')
 @UseGuards(AuthGuard())
 export class OrdersController {
   constructor(

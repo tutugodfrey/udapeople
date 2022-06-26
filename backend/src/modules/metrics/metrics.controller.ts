@@ -1,25 +1,15 @@
 import { Controller, Header, Get, Request, Response } from '@nestjs/common';
-import * as Prometheus from 'prom-client';
+import { Prometheus } from './handlers/handler';
 
 @Controller('metrics')
 export class MetricsController {
   constructor() {}
   @Get()
   @Header('Content-type', Prometheus.register.contentType)
-  metrics(@Request() req, @Response() res) {
-      // Prometheus instrumentation
-    // const responseTimeInMs = Date.now() - res.locals.startEpoch
-    // const httpRequestDurationMicroSeconds = new Prometheus.Histogram({
-    //   name: 'http_request_duration_ms',
-    //   help: 'Duration of HTTP request in ms',
-    //   labelNames: ['route'],
-    //   buckets: [0.10, 5, 15, 50, 100, 200, 300, 400, 500]
-    // });
-    // httpRequestDurationMicroSeconds
-    //   .labels(req.route.path)
-    //   .observe(responseTimeInMs);
-    const collectDefaultMetrics = Prometheus.collectDefaultMetrics();
-    // collectDefaultMetrics({ timeout: 5000 });
-    return Prometheus.register.metrics();
+  async metrics(@Request() req, @Response() res) {
+    console.log(req.body);
+    const collectedMetrics = await Prometheus.register.metrics();
+    console.log(collectedMetrics);
+    res.send(collectedMetrics);
   };
 }

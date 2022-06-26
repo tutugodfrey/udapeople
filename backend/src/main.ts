@@ -20,15 +20,15 @@ async function bootstrap() {
   });
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
   const apiVersionPrefix: string = process.env.API_VERSION || 'api';
-  app.setGlobalPrefix(apiVersionPrefix);
+  // app.setGlobalPrefix(apiVersionPrefix);
   app.useGlobalInterceptors(new TransformInterceptor());
   const options = new DocumentBuilder()
     .setTitle('Glee2')
     .setDescription('Glee2 API')
     .setVersion('1.0')
     .addTag('customTag')
-    .setBasePath(apiVersionPrefix)
-    .addBearerAuth() // here is an intentional compile error. Remove the "x" and the backend should compile.
+    // .setBasePath(apiVersionPrefix)
+    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, options);
   SwaggerModule.setup(`api/${apiVersionPrefix}`, app, document);
@@ -45,14 +45,6 @@ async function bootstrap() {
       }
     },
   };
-
-
-
-
-  // app.get('/metrics', (req, res) => {
-  //   res.set('Content-type', Prometheus.register.contentType);
-  //   res.end(Prometheus.register.metrics());
-  // });
 
   app.use(cors(corsOptions));
   app.useGlobalFilters(new ErrorFilter());
