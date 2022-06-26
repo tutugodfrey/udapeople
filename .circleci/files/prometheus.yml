@@ -124,6 +124,7 @@ Resources:
           ALERT_RECEIVER_EMAIL=$(aws ssm get-parameters --name alert-receiver-email --with-decryption --output text --query "Parameters[*].Value")
           sed -i "s/AWS_REGION/$AWS_DEFAULT_REGION/" prometheus.yml
           sed -i "s/ACCESS_KEY_ID/$ACCESS_KEY_ID/" prometheus.yml
+          sed -i "s/BACKEND_TARGET_INSTANCE/backend/" prometheus.yml  # EC2 instance tag for prometheus to target
           echo SECRET_ACCESS_KEY $SECRET_ACCESS_KEY 
           sed -i "s|SECRET_ACCESS_KEY|$SECRET_ACCESS_KEY|" prometheus.yml
           sed -i "s|ALERT_EMAIL_PASSWORD|$ALERT_EMAIL_PASSWORD|" alertmanager.yml
