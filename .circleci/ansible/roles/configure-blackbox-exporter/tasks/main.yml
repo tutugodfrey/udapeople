@@ -1,0 +1,61 @@
+- name: "install blackbox exporter."
+  unarchive:
+    src: https://github.com/prometheus/blackbox_exporter/releases/download/v0.21.0/blackbox_exporter-0.21.0.linux-amd64.tar.gz
+    dest: /tmp
+    remote_src: yes
+
+- name: "Creare Group"
+  become: true
+  group:
+    name: "blackbox"
+    state: present
+
+- name: "Creare user"
+  become: true
+  user:
+    name: "blackbox"
+    group: "blackbox"
+    state: present
+    system: yes
+
+- name: "Create blackbox directory"
+  become: true
+  file:
+    path: /etc/blackbox
+    state: directory
+    owner: "blackbox"
+    group: "blackbox"
+
+- name: "move template files to /etc."
+  become: true
+  copy:
+    src: /tmp/blackbox_exporter-0.21.0.linux-amd64/blackbox.yml
+    dest: /etc/blackbox/blackbox.yml
+    remote_src: yes
+    mode: '0777'
+    owner: blackbox
+    group: 'blackbox'
+    
+- name: "move template files to /etc."
+  become: true
+  copy:
+    src: /tmp/blackbox_exporter-0.21.0.linux-amd64/blackbox_exporter
+    dest: /usr/local/bin
+    remote_src: yes
+    mode: '0777'
+    owner: blackbox
+    group: blackbox
+
+- name: "add node exporter configuration."
+  become: true
+  copy:
+    src: blackbox.service
+    dest: /etc/systemd/system/
+
+- name: "enable blackbox service"
+  become: true
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    name: blackbox
+    enabled: yes
