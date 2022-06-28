@@ -7,11 +7,11 @@ export class StatusController {
   constructor(private readonly configService: ConfigService) {}
 
   @Get()
-  status() {
+  async status() {
     const start = new Date().valueOf();
     const version = this.configService.about.version;
     const environment = this.configService.about.environment;
-    const end = new Date().valueOf(); - start;
+    const end = new Date().valueOf() - start;
     histogram.observe(end/1000);
     counter.inc();
     return {
